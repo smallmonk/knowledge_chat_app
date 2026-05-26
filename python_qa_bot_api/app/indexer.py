@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-base_path: Path = Path(os.getenv("BASE_PATH", "/tmp/knowledgebase"))
+base_path: Path = Path(os.getenv("BASE_PATH", "."))
 
 DOCS_DIR = base_path / "docs"
 INDEX_PATH = base_path / ".kb" / "index.json"
