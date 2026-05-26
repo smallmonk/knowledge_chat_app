@@ -32,7 +32,7 @@ Answer these before you start coding:
 
 ## Verification
 
-Before running the server, set your OpenAI API key:
+Before running the server, set your Gemini API key:
 
 ```bash
 export GEMINI_API_KEY="GEMINI_API_KEY"
