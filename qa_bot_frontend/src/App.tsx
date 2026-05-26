@@ -57,18 +57,26 @@ function App() {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
       <h1>Knowledge Base Q&A Bot</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ask a question..."
-          style={{ flexGrow: 1, padding: '0.5rem', fontSize: '1rem' }}
+          style={{ padding: '0.5rem', fontSize: '1rem' }}
           disabled={isLoading}
         />
-        <button type="submit" disabled={isLoading || !query.trim()} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
-          {isLoading ? 'Sending...' : 'Send'}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button type="submit" disabled={isLoading || !query.trim()} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            {isLoading ? 'Sending...' : 'Send'}
+          </button>
+          <button type="button" style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            Heath
+          </button>
+          <button type="button" style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            Index
+          </button>
+        </div>
       </form>
 
       {error && (
