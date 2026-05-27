@@ -15,7 +15,7 @@ To run the complete system, you need to start both the backend and the frontend.
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11
 - Node.js (v20 recommended)
 - npm or yarn
 - A Gemini API Key
