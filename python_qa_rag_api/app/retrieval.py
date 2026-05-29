@@ -6,16 +6,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from . import indexer
 
 
-SYSTEM_PROMPT = """
-# TODO: Write the system prompt for the knowledge base Q&A assistant.
-#
-# Design decision: Hallucination defense for retrieved chunks.
-#
-# Hints:
-# 1. Only answer using the provided CONTEXT.
-# 2. Cite sources using filename#heading.
-# 3. Define fallback behavior when the context lacks the answer.
-# 4. Explicitly prohibit guessing or outside knowledge.
+SYSTEM_PROMPT = """You are a knowledge base Q&A assistant.
+Your goal is to answer questions based ONLY on the provided CONTEXT.
+
+Rules:
+1. Only answer using the provided CONTEXT.
+2. Cite sources using the format [Source: filename#heading] when using information from the context.
+3. If the context lacks the answer, reply exactly with "I cannot confirm from the knowledge base."
+4. Do not guess or use any outside knowledge under any circumstances.
 """
 
 _llm = None
@@ -36,16 +34,15 @@ def get_llm():
 
 
 def build_prompt(query: str, ranked_chunks: list) -> str:
-    # TODO: Build the prompt from retrieved vector chunks.
-    #
-    # Design decision: Give the LLM enough context without flooding it.
-    #
-    # Hints:
-    # 1. Include [Source: filename#heading] before each chunk.
-    # 2. Include retrieval distance or score only for debugging.
-    # 3. Use top-k chunks passed into this function.
-    # 4. Place CONTEXT before QUESTION.
-    return f"CONTEXT:\n(no context)\n\nQUESTION:\n{query}"
+    context_parts = []
+    for doc, score in ranked_chunks:
+        source = doc.metadata.get("source", "unknown")
+        heading = doc.metadata.get("heading", "unknown")
+        context_parts.append(f"[Source: {source}#{heading}]\n{doc.page_content}")
+        
+    context_str = "\n\n".join(context_parts) if context_parts else "(no context)"
+    
+    return f"CONTEXT:\n{context_str}\n\nQUESTION:\n{query}"
 
 
 def query(question: str) -> dict:
