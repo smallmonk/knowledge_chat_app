@@ -20,6 +20,64 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const handleHealth = async () => {
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
+
+    try {
+      const res = await fetch('http://localhost:8000/health');
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setResponse({
+        answer: JSON.stringify(data, null, 2),
+        sources: []
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An error occurred while fetching the health status.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIndex = async () => {
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
+
+    try {
+      const res = await fetch('http://localhost:8000/index', {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setResponse({
+        answer: JSON.stringify(data, null, 2),
+        sources: []
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An error occurred while indexing.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
@@ -57,18 +115,26 @@ function App() {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
       <h1>Knowledge Base Q&A Bot</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ask a question..."
-          style={{ flexGrow: 1, padding: '0.5rem', fontSize: '1rem' }}
+          style={{ padding: '0.5rem', fontSize: '1rem' }}
           disabled={isLoading}
         />
-        <button type="submit" disabled={isLoading || !query.trim()} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
-          {isLoading ? 'Sending...' : 'Send'}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button type="submit" disabled={isLoading || !query.trim()} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            {isLoading ? 'Sending...' : 'Send'}
+          </button>
+          <button type="button" disabled={isLoading} onClick={handleHealth} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            Health
+          </button>
+          <button type="button" disabled={isLoading} onClick={handleIndex} style={{ padding: '0.5rem 1rem', fontSize: '1rem' }}>
+            Index
+          </button>
+        </div>
       </form>
 
       {error && (
