@@ -9,9 +9,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 
+base_path: Path = Path(os.getenv("BASE_PATH", "."))
 
-DOCS_DIR = Path(__file__).resolve().parents[3] / "docs"
-INDEX_DIR = Path(__file__).resolve().parents[3] / ".kb" / "faiss_index"
+DOCS_DIR = base_path / "docs"
+INDEX_DIR = base_path / ".kb" / "faiss_index"
 EMBEDDING_MODEL = "text-embedding-3-small"
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
