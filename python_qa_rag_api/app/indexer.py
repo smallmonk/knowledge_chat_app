@@ -55,15 +55,78 @@ def get_embeddings():
 
 
 def load_markdown_sections(path: Path) -> list[Document]:
-    # TODO: Load Markdown into source-citable Document records.
-    #
-    # Design decision: Preserve filename#heading metadata before chunking.
-    #
-    # Hints:
-    # 1. Use HEADING_RE to split by Markdown headings.
-    # 2. Put heading_path and content into page_content.
-    # 3. Store source metadata like "refund_policy.md#refund-timeline".
-    return []
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    lines = content.splitlines()
+    sections = []
+    
+    current_heading = None
+    current_level = 0
+    current_content = []
+    active_headings = []
+
+    for line in lines:
+        match = HEADING_RE.match(line)
+        if match:
+            if current_heading is not None:
+                sections.append({
+                    "heading": current_heading,
+                    "level": current_level,
+                    "active_headings": list(active_headings),
+                    "content": "\n".join(current_content).strip()
+                })
+            
+            level = len(match.group(1))
+            heading_text = match.group(2).strip()
+            
+            active_headings = active_headings[:level-1]
+            while len(active_headings) < level - 1:
+                active_headings.append("")
+            active_headings.append(heading_text)
+            
+            current_heading = heading_text
+            current_level = level
+            current_content = []
+        else:
+            current_content.append(line)
+
+    if current_heading is not None:
+        sections.append({
+            "heading": current_heading,
+            "level": current_level,
+            "active_headings": list(active_headings),
+            "content": "\n".join(current_content).strip()
+        })
+
+    # Fallback if no headings were found in the file
+    if not sections and content.strip():
+        default_heading = path.stem.replace("_", " ").title()
+        sections.append({
+            "heading": default_heading,
+            "level": 1,
+            "active_headings": [default_heading],
+            "content": content.strip()
+        })
+
+    documents = []
+    for sec in sections:
+        heading_path = " > ".join(sec["active_headings"])
+        page_content = f"{heading_path}\n{sec['content']}".strip()
+        slug = slugify(sec["heading"])
+        source_meta = f"{path.name}#{slug}"
+        
+        doc = Document(
+            page_content=page_content,
+            metadata={
+                "source": source_meta,
+                "heading": sec["heading"],
+                "heading_path": heading_path,
+            }
+        )
+        documents.append(doc)
+
+    return documents
 
 
 def build_index(docs_dir: Path = DOCS_DIR) -> tuple[int, int]:
