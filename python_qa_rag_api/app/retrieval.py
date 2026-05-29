@@ -1,6 +1,6 @@
 import os
 
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from . import indexer
@@ -77,7 +77,19 @@ def query(question: str) -> dict:
         for doc, score in ranked_chunks
     ]
 
+    answer_text = response.content
+    if isinstance(answer_text, list):
+        text_parts = []
+        for part in answer_text:
+            if isinstance(part, dict) and "text" in part:
+                text_parts.append(part["text"])
+            elif isinstance(part, str):
+                text_parts.append(part)
+        answer_text = "".join(text_parts)
+    elif not isinstance(answer_text, str):
+        answer_text = str(answer_text)
+
     return {
-        "answer": response.content,
+        "answer": answer_text,
         "sources": sources,
     }
