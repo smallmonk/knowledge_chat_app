@@ -129,45 +129,103 @@ def load_markdown_sections(path: Path) -> list[Document]:
     return documents
 
 
-def build_index(docs_dir: Path = DOCS_DIR) -> tuple[int, int]:
+def build_index(docs_dir: Path | None = None) -> tuple[int, int]:
     global vectorstore, files_indexed, sections_indexed
 
-    # TODO: Build a FAISS vector index from docs/*.md.
-    #
-    # Hints:
-    # 1. Load all Markdown files from docs_dir.
-    # 2. Convert each heading section to a Document.
-    # 3. Split documents into chunks with splitter.split_documents().
-    # 4. Create FAISS.from_documents(chunks, get_embeddings()).
-    # 5. Save the FAISS index to .kb/faiss_index/.
-    # 6. Return (files_indexed, chunks_indexed).
-    vectorstore = None
+    if docs_dir is None:
+        docs_dir = DOCS_DIR
+
+    if not docs_dir.exists():
+        vectorstore = None
+        files_indexed = 0
+        sections_indexed = 0
+        return files_indexed, sections_indexed
+
+    md_files = list(docs_dir.glob("*.md"))
+    all_documents = []
     files_indexed = 0
-    sections_indexed = 0
+
+    for file_path in md_files:
+        try:
+            docs = load_markdown_sections(file_path)
+            if docs:
+                all_documents.extend(docs)
+                files_indexed += 1
+        except Exception as exc:
+            print(f"[vector_rag] Failed to load {file_path}: {exc}", flush=True)
+
+    if not all_documents:
+        vectorstore = None
+        sections_indexed = 0
+        save_vector_index()
+        return files_indexed, sections_indexed
+
+    chunks = splitter.split_documents(all_documents)
+    sections_indexed = len(chunks)
+
+    vectorstore = FAISS.from_documents(chunks, get_embeddings())
+    save_vector_index()
+
     return files_indexed, sections_indexed
 
 
-def save_vector_index(index_dir: Path = INDEX_DIR) -> None:
-    # TODO: Persist the FAISS index so restart does not require re-embedding.
-    #
-    # Hints:
-    # 1. Return early if vectorstore is None.
-    # 2. Clear stale persisted files with shutil.rmtree(...) if the new index is empty.
-    # 3. Use vectorstore.save_local(str(index_dir)).
-    # 4. Write metadata.json with embedding_model, files_indexed, and sections_indexed.
-    # 5. json.dumps(..., indent=2) makes the metadata easy to inspect.
-    pass
+def save_vector_index(index_dir: Path | None = None) -> None:
+    global vectorstore, files_indexed, sections_indexed
+    
+    if index_dir is None:
+        index_dir = INDEX_DIR
+
+    if vectorstore is None:
+        if index_dir.exists():
+            shutil.rmtree(index_dir)
+        return
+
+    index_dir.mkdir(parents=True, exist_ok=True)
+    vectorstore.save_local(str(index_dir))
+
+    metadata = {
+        "embedding_model": EMBEDDING_MODEL,
+        "files_indexed": files_indexed,
+        "sections_indexed": sections_indexed
+    }
+
+    with open(index_dir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
 
 
-def load_vector_index(index_dir: Path = INDEX_DIR) -> tuple[int, int]:
-    # TODO: Load .kb/faiss_index/ on server startup if it exists.
-    #
-    # Hints:
-    # 1. Check for index.faiss and index.pkl.
-    # 2. Read metadata.json and verify embedding_model still matches.
-    # 3. Use FAISS.load_local(..., allow_dangerous_deserialization=True).
-    # 4. Only use dangerous deserialization for indexes created by this local app.
-    return 0, 0
+def load_vector_index(index_dir: Path | None = None) -> tuple[int, int]:
+    global vectorstore, files_indexed, sections_indexed
+
+    if index_dir is None:
+        index_dir = INDEX_DIR
+
+    faiss_file = index_dir / "index.faiss"
+    pkl_file = index_dir / "index.pkl"
+    metadata_file = index_dir / "metadata.json"
+
+    if not (faiss_file.exists() and pkl_file.exists() and metadata_file.exists()):
+        return 0, 0
+
+    try:
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        if metadata.get("embedding_model") != EMBEDDING_MODEL:
+            print(f"[vector_rag] Embedding model mismatch: expected {EMBEDDING_MODEL}, found {metadata.get('embedding_model')}", flush=True)
+            return 0, 0
+
+        vectorstore = FAISS.load_local(
+            str(index_dir),
+            get_embeddings(),
+            allow_dangerous_deserialization=True
+        )
+
+        files_indexed = metadata.get("files_indexed", 0)
+        sections_indexed = metadata.get("sections_indexed", 0)
+        return files_indexed, sections_indexed
+    except Exception as exc:
+        print(f"[vector_rag] Failed to load local vector index: {exc}", flush=True)
+        return 0, 0
 
 
 def search(query: str, k: int = 3) -> list[tuple[Document, float]]:
